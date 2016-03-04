@@ -16,7 +16,7 @@ MultiProxy = pudding.whisk({abi: MultiProxy.abi, binary: MultiProxy.binary, cont
 var TestRegistry = require("../environments/development/contracts/TestRegistry.sol.js").load(pudding);
 TestRegistry = pudding.whisk({abi: TestRegistry.abi, binary: TestRegistry.binary, contract_name: TestRegistry.contract_name})
 
-var multiProxy;
+var proxy;
 var testReg;
 var logNumber = 1234;
 
@@ -28,14 +28,14 @@ describe("MultiProxy contract test", function () {
                           TestRegistry.new({from: acct[0]}),
                          ];
       Promise.all(newContracts).then(function(cc) {
-        multiProxy = cc[0];
+        proxy = cc[0];
         testReg = cc[1];
         // Encode the transaction to send to the MultiProxy contract
         var data = lightwallet.txutils._encodeFunctionTxData('register', ['uint256'], [logNumber]);
-        return multiProxy.forward(testReg.address, 0, '0x' + data, {from:acct[0]});
+        return proxy.forward(testReg.address, 0, '0x' + data, {from:acct[0]});
       }).then(function() {
         // Verify that the MultiProxy address is logged
-        return testReg.registry.call(multiProxy.address);
+        return testReg.registry.call(proxy.address);
       }).then(function(regData) {
         expect(regData.toNumber()).to.equal(logNumber);
         done();
@@ -48,29 +48,29 @@ describe("MultiProxy contract test", function () {
       var newContracts = [MultiProxy.new({from: acct[0]}),
                           TestRegistry.new({from: acct[0]})];
       Promise.all(newContracts).then(function(cc) {
-        multiProxy = cc[0];
+        proxy = cc[0];
         testReg = cc[1];
 
         // Change owner
-        return multiProxy.authorize(acct[1], {from:acct[0]});
+        return proxy.authorize(acct[1], {from:acct[0]});
       }).then(function () {
         // Encode the transaction to send to the MultiProxy contract
         var data = lightwallet.txutils._encodeFunctionTxData('register', ['uint256'], [1000]);
         // Send forward request from original owner
-        return multiProxy.forward(testReg.address, 0, '0x' + data, {from:acct[0]});
+        return proxy.forward(testReg.address, 0, '0x' + data, {from:acct[0]});
       }).then(function() {
         // Verify that the MultiProxy address is logged
-        return testReg.registry.call(multiProxy.address);
+        return testReg.registry.call(proxy.address);
       }).then(function(regData) {
         expect(regData.toNumber()).to.equal(1000);
       }).then(function () {
         // Encode the transaction to send to the MultiProxy contract
         var data = lightwallet.txutils._encodeFunctionTxData('register', ['uint256'], [1001]);
         // Send forward request from new owner
-        return multiProxy.forward(testReg.address, 0, '0x' + data, {from:acct[1]});
+        return proxy.forward(testReg.address, 0, '0x' + data, {from:acct[1]});
       }).then(function() {
         // Verify that the MultiProxy address is logged
-        return testReg.registry.call(multiProxy.address);
+        return testReg.registry.call(proxy.address);
       }).then(function(regData) {
         expect(regData.toNumber()).to.equal(1001);
         done();
@@ -83,22 +83,22 @@ describe("MultiProxy contract test", function () {
       var newContracts = [MultiProxy.new({from: acct[0]}),
                           TestRegistry.new({from: acct[0]})];
       Promise.all(newContracts).then(function(cc) {
-        multiProxy = cc[0];
+        proxy = cc[0];
         testReg = cc[1];
 
         // Change owner
-        return multiProxy.authorize(acct[1], {from:acct[0]});
+        return proxy.authorize(acct[1], {from:acct[0]});
       }).then(function () {
         // New owner revokes old owner
-        return multiProxy.revoke(acct[0], {from:acct[1]});
+        return proxy.revoke(acct[0], {from:acct[1]});
       }).then(function () {
         // Encode the transaction to send to the MultiProxy contract
         var data = lightwallet.txutils._encodeFunctionTxData('register', ['uint256'], [1000]);
         // Send forward request from old owner
-        return multiProxy.forward(testReg.address, 0, '0x' + data, {from:acct[0]});
+        return proxy.forward(testReg.address, 0, '0x' + data, {from:acct[0]});
       }).then(function() {
-        // Verify that the MultiProxy address is logged
-        return testReg.registry.call(multiProxy.address);
+        // Verify that the MultiProxy address is not logged
+        return testReg.registry.call(proxy.address);
       }).then(function(regData) {
         expect(regData.toNumber()).to.equal(0);
         done();

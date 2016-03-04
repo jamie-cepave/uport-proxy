@@ -2,6 +2,7 @@
 
 - Core contract is: [Proxy.sol](contracts/Proxy.sol)
 - MultiProxy contract is: [MultiProxy.sol](contracts/MultiProxy.sol)
+- GuardedProxy contract is: [GuardedProxy.sol](contracts/GuardedProxy.sol)
 - Default implementation used is: [Implementation.sol](examples/Implementation.sol)
 
 Example custom implementations:
@@ -19,7 +20,8 @@ Example custom implementations:
 - Explore second `forward` function signature which takes signed transactions
 - Make sure proxy forward is only ever called by owner
 - Make sure all forwarded txs from proxy have proxy as msg.sender
-- Made MultipleOwned Proxy for uPort identities that can be controlled by multiple devices
+- Added MultipleOwned Proxy for uPort identities that can be controlled by multiple devices
+- Added GuardedProxy which can have an optional "Guard" a contract or account that can add new accounts to proxy
 
 ## Todos
 
