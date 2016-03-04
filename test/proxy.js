@@ -25,7 +25,29 @@ var testReg;
 var logNumber = 1234;
 
 describe("Proxy contract test", function () {
+  this.timeout(5000);
   it("Creates and uses a proxy", function(done) {
+    web3.eth.getAccounts(function(err, acct) {
+      var newContracts = [Proxy.new({from: acct[0]}),
+                          TestRegistry.new({from: acct[0]}),
+                         ];
+      Promise.all(newContracts).then(function(cc) {
+        proxy = cc[0];
+        testReg = cc[1];
+        // Encode the transaction to send to the proxy contract
+        var data = lightwallet.txutils._encodeFunctionTxData('register', ['uint256'], [logNumber]);
+        return proxy.forward(testReg.address, 0, '0x' + data, {from:acct[0]});
+      }).then(function() {
+        // Verify that the proxy address is logged
+        return testReg.registry.call(proxy.address);
+      }).then(function(regData) {
+        expect(regData.toNumber()).to.equal(logNumber);
+        done();
+      }).catch(done)
+    })
+  });
+
+  it("Changes the owner of a proxy", function(done) {
     web3.eth.getAccounts(function(err, acct) {
       var newContracts = [Proxy.new({from: acct[0]}),
                           TestRegistry.new({from: acct[0]})];
@@ -51,27 +73,4 @@ describe("Proxy contract test", function () {
   });
 
 
-  it("Changes the owner of a proxy", function(done) {
-    web3.eth.getAccounts(function(err, acct) {
-      var newContracts = [Proxy.new({from: acct[0]}),
-                          TestRegistry.new({from: acct[0]}),
-                         ];
-      Promise.all(newContracts).then(function(cc) {
-        proxy = cc[0];
-        testReg = cc[1];
-        // Encode the transaction to send to the proxy contract
-        var data = lightwallet.txutils._encodeFunctionTxData('register', ['uint256'], [logNumber]);
-        return proxy.forward(testReg.address, 0, '0x' + data, {from:acct[0]});
-      }).then(function() {
-        // Verify that the proxy address is logged
-        return testReg.registry.call(proxy.address);
-      }).then(function(regData) {
-        expect(regData.toNumber()).to.equal(logNumber);
-        done();
-      }).catch(done)
-    })
-  });
-
-
 });
-
