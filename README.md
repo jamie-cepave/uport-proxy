@@ -1,6 +1,7 @@
 # Proxy
 
-- Core contract is: [Proxy.sol](src/Proxy.sol)
+- Core contract is: [Proxy.sol](contracts/Proxy.sol)
+- MultiProxy contract is: [MultiProxy.sol](contracts/MultiProxy.sol)
 - Default implementation used is: [Implementation.sol](examples/Implementation.sol)
 
 Example custom implementations:
@@ -18,6 +19,7 @@ Example custom implementations:
 - Explore second `forward` function signature which takes signed transactions
 - Make sure proxy forward is only ever called by owner
 - Make sure all forwarded txs from proxy have proxy as msg.sender
+- Made MultipleOwned Proxy for uPort identities that can be controlled by multiple devices
 
 ## Todos
 
