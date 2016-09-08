@@ -1,39 +1,61 @@
 import "Proxy.sol";
+import "Lib.sol";
 
 contract SharedController {
-    // uint    public version;
-    // Proxy   public proxy;
+    Proxy public proxy;
+    address[] public userAddresses;
+    mapping( bytes32 => mapping( address => bool )) public txSigners;
+    
+    modifier onlyUsers() { if(Lib.findAddress(msg.sender, userAddresses) != -1) _}
+    modifier onlyProxy() { if(address(proxy) == msg.sender) _}
 
-    // address[] public userAddresses;
-    // mapping( address => bool ) isUser;
-    // mapping( address => mapping( address => bool )) txSigners;
+    function SharedController(address proxyAddress, address[] _userAddresses) {
+        proxy = Proxy(proxyAddress);
+        userAddresses = _userAddresses;
+    }
 
-    // modifier onlyUsers() { if(isUser[msg.sender]) _}
+    function signTx(address destination, uint value, bytes data) onlyUsers {
+        bytes32 txHash = sha3(destination,value,data);
+        txSigners[txHash][msg.sender] = true;
+        if (collectedSignatures(txHash) >= neededSignatures()){
+            resetSignatures(txHash); //so another set of sigs is needed to replay tx
+            forward(destination, value, data); 
+        }
+    }
+    
+    function changeController(address newController) onlyProxy{
+        proxy.transfer(newController);
+        suicide(newController);
+    }
+    function addUser(address newUser) onlyProxy{
+        if(Lib.findAddress(newUser, userAddresses) == -1){
+            userAddresses.push(newUser);
+        }
+    }
+    function removeUser(address oldUser) onlyProxy{
+        uint lastIndex = userAddresses.length - 1;
+        int i = Lib.findAddress(oldUser, userAddresses);
+        if(i != -1){
+            Lib.removeAddress(uint(i), userAddresses);
+        }
+    }
 
-    // function SharedController(address proxyAddress, address[] _userAddresses) {
-    //     version = 2; //collaborative ID;
-    //     proxy = Proxy(proxyAddress);
-    //     userAddresses = _userAddresses
-    //     for (uint i = 0 ; i < userAddresses.length ; i++){ isUser[userAddresses[i]] = true; }
-    // }
+    function collectedSignatures(bytes32 txHash) returns (uint signatures){
+        for(uint i = 0 ; i < userAddresses.length ; i++){
+            if (txSigners[txHash][userAddresses[i]]){
+                signatures++;
+            }
+        }
+    }
+    function neededSignatures() returns (uint){ return userAddresses.length/2 + 1; }
+    function getUserAddresses() returns(address[]){return userAddresses;}
 
-    // function signTx(address destination, uint value, bytes data) onlyUsers {
-    //     bytes txHash = sha3(destination + value + data);
-    //     txSigners[txHash][msg.sender] = true;
-    //     if (collectedSignatures(txHash) >= neededSignatures()){ forward(destination, value, data) }
-    // }
-
-    // function forward(address destination, uint value, bytes data) private {
-    //     proxy.forward(destination, value, data);
-    // }
-
-    // function collectedSignatures(bytes txHash) returns (uint signatures){
-    //     for(uint i = 0 ; i < userAddresses.length ; i++){
-    //         if (txSigners[txHash][userAddresses[i]]){
-    //             signatures++;
-    //         }
-    //     }
-    // }
-    // function neededSignatures() returns (uint){ return userAddresses.length/2 + 1; }
+    function forward(address destination, uint value, bytes data) private {
+        proxy.forward(destination, value, data);
+    }
+    function resetSignatures(bytes32 txHash) private {
+        for(uint i = 0 ; i < userAddresses.length ; i++){
+            txSigners[txHash][userAddresses[i]] = false;
+        }
+    }
 }
-

@@ -1,6 +1,6 @@
 module.exports = function(deployer) {
-  deployer.deploy(TestRegistry);
+  deployer.deploy(Lib);
   deployer.autolink();
-  deployer.deploy(IdentityFactory);
+  deployer.deploy(SharedControllerFactory);
   deployer.autolink();
 };

@@ -80,6 +80,10 @@ contract("Uport proxy integration tests", (accounts) => {
       transaction_signer: proxySigner
     });
     TestRegistry.setProvider(web3ProxyProvider);
+// console.log("HERERERERERERER");
+// console.log(web3ProxyProvider.transaction_signer);
+// web3ProxyProvider.transaction_signer  = "NEW THING";
+// console.log(web3ProxyProvider.transaction_signer);
 
     // Register a number from proxy.address
     testReg.register(LOG_NUMBER_1, {from: proxy.address}).then(() => {
