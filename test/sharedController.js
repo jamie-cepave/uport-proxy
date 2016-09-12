@@ -7,126 +7,101 @@ var Phrase = lightwallet.generators.Phrase;
 var ProxySigner = lightwallet.signers.ProxySigner;
 var regularWeb3Provider = web3.currentProvider;
 
-const SEED1 = 'tackle crystal drum type spin nest wine occur humor grocery worry pottery';
-const SEED2 = 'tree clock fly receive mirror scissors away avoid seminar attract wife holiday';
 const LOG_NUMBER_1 = 1234;
 const LOG_NUMBER_2 = 2345;
 
 contract("Uport proxy integration tests", (accounts) => {
   var identityFactory;
-  var testReg;
-  var proxy;
-  var recoverableController;
-  var recoveryQuorum;
+  var sharedIdentityFactory;
 
-  var delegateDeletedAfter =    0;
-  var delegatePendingUntil =    1;
-  var delegateProposedUserKey = 2;
+  var signers = [];
+  var controllers = [];
+  var proxies = [];
 
-  var proxySigner;
-  var user1Signer;
-  var user2Signer;
-  var user1;
-  var user2;
-  var admin;
+  var sharedController;
+  var sharedProxy;
 
-  // var neededSigs = 2;
-  var shortTimeLock = 2;
-  var longTimeLock = 5;
+  var identityFactoryFilter;
+  var sharedIdentityFactoryFilter;
+  var testRegistry;
 
   before(() => {
-    user1Signer = new HDSigner(Phrase.toHDPrivateKey(SEED1));
-    user1 = user1Signer.getAddress();
-    user2Signer = new HDSigner(Phrase.toHDPrivateKey(SEED2));
-    user2 = user2Signer.getAddress();
-    admin = accounts[0];
-    delegates = [
-        accounts[1],
-        accounts[2]
-    ];
-    web3.eth.sendTransaction({from: admin, to: user1, value: web3.toWei('1', 'ether')});
-    web3.eth.sendTransaction({from: admin, to: user2, value: web3.toWei('1', 'ether')});
+    signers[0] = new HDSigner(Phrase.toHDPrivateKey("tackle crystal drum type spin nest wine occur humor grocery worry pottery"));
+    signers[1] = new HDSigner(Phrase.toHDPrivateKey("tree clock fly receive mirror scissors away avoid seminar attract wife holiday"));
 
-    var web3Prov = new HookedWeb3Provider({
-      host: 'http://localhost:8545',
-      transaction_signer: new Signer(user1Signer),
-    });
-    web3.setProvider(web3Prov);
-    // Truffle deploys contracts with accounts[0]
-    IdentityFactory.setProvider(web3Prov);
-    TestRegistry.setProvider(web3Prov);
+    web3.eth.sendTransaction({from: accounts[0], to: signers[0].getAddress(), value: web3.toWei('1', 'ether')});
+    web3.eth.sendTransaction({from: accounts[0], to: signers[1].getAddress(), value: web3.toWei('1', 'ether')});
+
+    sharedIdentityFactory = SharedIdentityFactory.deployed();
     identityFactory = IdentityFactory.deployed();
-    testReg = TestRegistry.deployed();
+    testRegistry = TestRegistry.deployed();
+
+    identityFactoryFilter = identityFactory.IdentityCreated({});
+    sharedIdentityFactoryFilter = identityFactory.IdentityCreated({});
   });
 
   it("Create proxy, controller, and recovery contracts", (done) => {
-    var event = identityFactory.IdentityCreated({creator: user1})
-    event.watch((error, result) => {
-      event.stopWatching();
-      proxy = Proxy.at(result.args.proxy);
-      recoverableController = RecoverableController.at(result.args.controller);
-      recoveryQuorum = RecoveryQuorum.at(result.args.recoveryQuorum);
-
-      recoverableController.changeRecoveryFromRecovery(recoveryQuorum.address, {from: admin}).then(() => {done();});
-    });
-    identityFactory.CreateProxyWithControllerAndRecovery(user1, delegates, longTimeLock, shortTimeLock, {from: user1}).catch(done);
-  });
-
-  it("Use proxy for simple function call", (done) => {
-    // Set up the new Proxy provider
-    proxySigner = new Signer(new ProxySigner(proxy.address, user1Signer, recoverableController.address));
-    var web3ProxyProvider = new HookedWeb3Provider({
-      host: 'http://localhost:8545',
-      transaction_signer: proxySigner
-    });
-    TestRegistry.setProvider(web3ProxyProvider);
-// console.log("HERERERERERERER");
-// console.log(web3ProxyProvider.transaction_signer);
-// web3ProxyProvider.transaction_signer  = "NEW THING";
-// console.log(web3ProxyProvider.transaction_signer);
-
-    // Register a number from proxy.address
-    testReg.register(LOG_NUMBER_1, {from: proxy.address}).then(() => {
-      // Verify that the proxy address is logged
-      return testReg.registry.call(proxy.address);
-    }).then((regData) => {
-      assert.equal(regData.toNumber(), LOG_NUMBER_1);
-      done();
-    }).catch(done);
-  });
-
-  it("Do a social recovery and do another function call", (done) => {
-    // User regular web3 provider to send from regular accounts
-    web3.setProvider(regularWeb3Provider);
-    recoveryQuorum.signUserChange(user2, {from: delegates[0]})
+    identityFactory.CreateProxyWithControllerAndRecovery(signers[0].getAddress(),[],0,0, {from: accounts[1]})
     .then(() => {
-      return recoveryQuorum.delegates.call(delegates[0]);})
-    .then((delegate1) => {
-      assert.isAbove(delegate1[delegateDeletedAfter], 0, "this delegate should have record in quorum"); 
-      return recoveryQuorum.delegates.call("0xdeadbeef");})
-    .then((notADelegate) => {
-      assert.equal(notADelegate[delegateDeletedAfter], 0, "this delegate should not have a record in quorum");
-      return recoveryQuorum.delegateAddresses(1);})
-    .then((delegate1Address) => {
-      assert.equal(delegate1Address, delegates[1], "this delegate should also be in the delegateAddresses array in quorum");
-      return recoveryQuorum.signUserChange(user2, {from: delegates[1]});
-    }).then(() => {
-      proxySigner = new Signer(new ProxySigner(proxy.address, user2Signer, recoverableController.address));
-      var web3ProxyProvider = new HookedWeb3Provider({
-        host: 'http://localhost:8545',
-        transaction_signer: proxySigner
+      return identityFactory.CreateProxyWithControllerAndRecovery(signers[1].getAddress(),[],0,0, {from: accounts[1]})})
+    .then(() => {
+      return identityFactoryFilter.get((error, logs) => {
+        controllers[0] = RecoverableController.at(logs[0].args.controller);
+        proxies[0] = Proxy.at(logs[0].args.proxy);
+        controllers[1] = RecoverableController.at(logs[1].args.controller);
+        proxies[1] = Proxy.at(logs[1].args.proxy);
+        // console.log("controllers:", controllers, " proxies ", proxies);
+        sharedIdentityFactory.CreateProxyWithSharedController([proxies[0].address, proxies[1].address], {from: accounts[1]})
+        .then(() => {
+          return sharedIdentityFactoryFilter.get((error, logs) => {
+            sharedController = SharedController.at(logs[0].args.controller);
+            sharedProxy = Proxy.at(logs[0].args.proxy);
+
+            var web3ProxyProvider = new HookedWeb3Provider({
+              host: 'http://localhost:8545',
+              transaction_signer: new Signer(new ProxySigner(proxies[0].address, signers[0], sharedController.address))
+            });
+            Proxy.setProvider(web3ProxyProvider);
+            RecoverableController.setProvider(web3ProxyProvider);
+            console.log(web3.eth.Eth);
+            console.log("A", proxies[0], "B", proxies[0].address);
+            web3.setProvider(web3ProxyProvider);
+            // web3.eth.sendTransaction({from: proxies[0].address, to:0x123, value: 12345})
+            // .then(() => {
+               web3.eth.getBalance(signers[0].getAddress(), (error, response) => {
+              console.log("BALBABLBALBALBALBALBAL", response.toNumber());
+              done();
+                
+               })//})
+              // return web3.eth.getBalance(proxies[0].address)})
+            // .then((balance) => {
+            // });
+          });
+        });
       });
-      TestRegistry.setProvider(web3ProxyProvider);
-      // Register a number from proxy.address
-      return recoverableController.userKey.call()
-    }).then((newUserKey) => {
-      assert.equal(newUserKey, user2, "User key of recoverableController should have been updated.");
-      return testReg.register(LOG_NUMBER_2, {from: proxy.address})
-    }).then(() => {
-      return testReg.registry.call(proxy.address);
-    }).then((regData) => {
-      assert.equal(regData.toNumber(), LOG_NUMBER_2);
-      done();
-    }).catch(done);
+    });
   });
+
+  // it("Create proxy, controller, and recovery contracts", (done) => {
+  //   identityFactory.CreateProxyWithControllerAndRecovery(signers[0].getAddress(),[],0,0, {from: accounts[1]})
+  //   .then(() => {
+  //     return identityFactory.CreateProxyWithControllerAndRecovery(signers[1].getAddress(),[],0,0, {from: accounts[1]})})
+  //   .then(() => {
+  //     return identityFactoryFilter.get((error, logs) => {
+  //       controllers[0] = RecoverableController.at(logs[0].args.controller);
+  //       proxies[0] = Proxy.at(logs[0].args.proxy);
+  //       controllers[1] = RecoverableController.at(logs[1].args.controller);
+  //       proxies[1] = Proxy.at(logs[1].args.proxy);
+  //       // console.log("controllers:", controllers, " proxies ", proxies);
+  //       sharedIdentityFactory.CreateProxyWithSharedController([proxies[0].address, proxies[1].address], {from: accounts[1]})
+  //       .then(() => {
+  //         return sharedIdentityFactoryFilter.get((error, logs) => {
+  //           sharedController = SharedController.at(logs[0].args.controller);
+  //           sharedProxy = Proxy.at(logs[0].args.proxy);
+  //           done();
+  //         });
+  //       });
+  //     });
+  //   });
+  // });
 });

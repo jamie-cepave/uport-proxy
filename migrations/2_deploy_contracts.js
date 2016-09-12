@@ -1,6 +1,8 @@
 module.exports = function(deployer) {
+  deployer.deploy(Owned);
+  deployer.deploy(Proxy);
+  deployer.deploy(RecoverableController);
   deployer.deploy(TestRegistry);
-  deployer.autolink();
+  deployer.deploy(RecoveryQuorum);
   deployer.deploy(IdentityFactory);
-  deployer.autolink();
 };

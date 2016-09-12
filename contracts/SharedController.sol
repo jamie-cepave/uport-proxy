@@ -6,27 +6,24 @@ contract SharedController {
     address[] public userAddresses;
     mapping( bytes32 => mapping( address => bool )) public txSigners;
     
-    modifier onlyUsers() { if(Lib.findAddress(msg.sender, userAddresses) != -1) _}
-    modifier onlyProxy() { if(address(proxy) == msg.sender) _}
+    modifier onlyProxy() { if(address(proxy) == msg.sender) _; }
 
     function SharedController(address proxyAddress, address[] _userAddresses) {
         proxy = Proxy(proxyAddress);
         userAddresses = _userAddresses;
     }
 
-    function signTx(address destination, uint value, bytes data) onlyUsers {
-        bytes32 txHash = sha3(destination,value,data);
+    function forward(address destination, uint value, bytes data, uint nonce) {
+        bytes32 txHash = sha3(destination,value,data, nonce);
         txSigners[txHash][msg.sender] = true;
         if (collectedSignatures(txHash) >= neededSignatures()){
-            resetSignatures(txHash); //so another set of sigs is needed to replay tx
-            forward(destination, value, data); 
+            toProxy(destination, value, data);
+            resetSignatures(txHash);
         }
     }
-    
-    function changeController(address newController) onlyProxy{
-        proxy.transfer(newController);
-        suicide(newController);
-    }
+    //vote=false to revoke
+    function cheapSign(bytes32 txHash, bool vote) { txSigners[txHash][msg.sender] = vote; }
+//settings
     function addUser(address newUser) onlyProxy{
         if(Lib.findAddress(newUser, userAddresses) == -1){
             userAddresses.push(newUser);
@@ -35,11 +32,13 @@ contract SharedController {
     function removeUser(address oldUser) onlyProxy{
         uint lastIndex = userAddresses.length - 1;
         int i = Lib.findAddress(oldUser, userAddresses);
-        if(i != -1){
-            Lib.removeAddress(uint(i), userAddresses);
-        }
+        if(i != -1){ Lib.removeAddress(uint(i), userAddresses); }
     }
-
+    function changeController(address newController) onlyProxy{
+        proxy.transfer(newController);
+        suicide(newController);
+    }
+//read only
     function collectedSignatures(bytes32 txHash) returns (uint signatures){
         for(uint i = 0 ; i < userAddresses.length ; i++){
             if (txSigners[txHash][userAddresses[i]]){
@@ -47,10 +46,10 @@ contract SharedController {
             }
         }
     }
-    function neededSignatures() returns (uint){ return userAddresses.length/2 + 1; }
+    function neededSignatures() returns(uint){ return userAddresses.length/2 + 1; }
     function getUserAddresses() returns(address[]){return userAddresses;}
-
-    function forward(address destination, uint value, bytes data) private {
+//private
+    function toProxy(address destination, uint value, bytes data) private {
         proxy.forward(destination, value, data);
     }
     function resetSignatures(bytes32 txHash) private {
