@@ -1,5 +1,7 @@
 var HookedWeb3Provider = require('hooked-web3-provider');
 var lightwallet = require('eth-signer');
+var cryptoJS = require('crypto-js');
+var ethereumjsUtil = require('ethereumjs-util');
 
 var Signer = lightwallet.signer;
 var HDSigner = lightwallet.signers.HDSigner;
@@ -7,10 +9,17 @@ var Phrase = lightwallet.generators.Phrase;
 var ProxySigner = lightwallet.signers.ProxySigner;
 var regularWeb3Provider = web3.currentProvider;
 
+
+const ProviderEngine = require('web3-provider-engine')
+const FixtureSubprovider = require('web3-provider-engine/subproviders/fixture.js')
+const NonceSubprovider = require('web3-provider-engine/subproviders/nonce-tracker.js')
+var engine = new ProviderEngine()
+
+
 const LOG_NUMBER_1 = 1234;
 const LOG_NUMBER_2 = 2345;
 
-contract("Uport proxy integration tests", (accounts) => {
+contract("sharedController integration tests", (accounts) => {
   var identityFactory;
   var sharedIdentityFactory;
 
@@ -24,6 +33,8 @@ contract("Uport proxy integration tests", (accounts) => {
   var identityFactoryFilter;
   var sharedIdentityFactoryFilter;
   var testRegistry;
+
+  var randomAddress = "0xf235aa56ddccd7096bda02acfb361ec38b313e27";
 
   before(() => {
     signers[0] = new HDSigner(Phrase.toHDPrivateKey("tackle crystal drum type spin nest wine occur humor grocery worry pottery"));
@@ -50,7 +61,6 @@ contract("Uport proxy integration tests", (accounts) => {
         proxies[0] = Proxy.at(logs[0].args.proxy);
         controllers[1] = RecoverableController.at(logs[1].args.controller);
         proxies[1] = Proxy.at(logs[1].args.proxy);
-        // console.log("controllers:", controllers, " proxies ", proxies);
         sharedIdentityFactory.CreateProxyWithSharedController([proxies[0].address, proxies[1].address], {from: accounts[1]})
         .then(() => {
           return sharedIdentityFactoryFilter.get((error, logs) => {
@@ -61,21 +71,21 @@ contract("Uport proxy integration tests", (accounts) => {
               host: 'http://localhost:8545',
               transaction_signer: new Signer(new ProxySigner(proxies[0].address, signers[0], sharedController.address))
             });
-            Proxy.setProvider(web3ProxyProvider);
-            RecoverableController.setProvider(web3ProxyProvider);
-            console.log(web3.eth.Eth);
-            console.log("A", proxies[0], "B", proxies[0].address);
-            web3.setProvider(web3ProxyProvider);
-            // web3.eth.sendTransaction({from: proxies[0].address, to:0x123, value: 12345})
-            // .then(() => {
-               web3.eth.getBalance(signers[0].getAddress(), (error, response) => {
-              console.log("BALBABLBALBALBALBALBAL", response.toNumber());
-              done();
-                
-               })//})
-              // return web3.eth.getBalance(proxies[0].address)})
-            // .then((balance) => {
+            TestRegistry.setProvider(web3ProxyProvider);
+
+            // web3ProxyProvider = new HookedWeb3Provider({
+            //   host: 'http://localhost:8545',
+            //   transaction_signer: new Signer(new ProxySigner(proxies[1].address, signers[1], sharedController.address))
             // });
+            // TestRegistry.web3.addProvider(web3ProxyProvider);
+
+            testRegistry.register(12345, {from: proxies[0].address})
+            .then(() => {
+              return testRegistry.registry.call(proxies[0].address)})
+            .then((thing) => {
+                console.log(thing.toNumber());
+                done();
+            });
           });
         });
       });

@@ -1,14 +1,4 @@
 {
-  "name": "uport-proxy",
-  "version": "0.0.2",
-  "description": "Ethereum solidity proxy contract",
-  "main": "index.js",
-  "directories": {
-    "example": "examples"
-  },
-  "scripts": {
-    "test": "node load_wallet.js && mocha --reporter spec test/*.js"
-  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/ConsenSys/uport-proxy.git"
@@ -19,23 +9,11 @@
     "proxy",
     "contract"
   ],
-  "devDependencies": {
-    "mocha" : "*",
-    "chai" : "*",
-    "ether-pudding" : "*",
-    "bluebird" : "*",
-    "web3" : "*",
-    "eth-signer" : "0.1.2",
-    "eth-lightwallet" : "*",
-    "babelify": "*",
-    "babel-preset-es2015": "*",
-    "hooked-web3-provider" : "*",
-    "web3-provider-engine" : "*"
-  },
   "authors": ["d11e9", "Christian Lundkvist"],
   "license": "MIT",
-  "bugs": {
-    "url": "https://github.com/ConsenSys/uport-proxy/issues"
-  },
-  "homepage": "https://github.com/ConsenSys/uport-proxy#readme"
+  "devDependencies": {
+    "eth-signer" : "0.1.2",
+    "hooked-web3-provider" : "*",
+    "web3-provider-engine" : "*"
+  }
 }

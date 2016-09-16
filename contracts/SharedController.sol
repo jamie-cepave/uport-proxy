@@ -6,7 +6,7 @@ contract SharedController {
     address[] public userAddresses;
     mapping( bytes32 => mapping( address => bool )) public txSigners;
     
-    modifier onlyProxy() { if(address(proxy) == msg.sender) _; }
+    modifier onlyProxy() { if(address(proxy) == msg.sender) _ }
 
     function SharedController(address proxyAddress, address[] _userAddresses) {
         proxy = Proxy(proxyAddress);
@@ -21,7 +21,7 @@ contract SharedController {
             resetSignatures(txHash);
         }
     }
-    //vote=false to revoke
+    //vote false to revoke
     function cheapSign(bytes32 txHash, bool vote) { txSigners[txHash][msg.sender] = vote; }
 //settings
     function addUser(address newUser) onlyProxy{
