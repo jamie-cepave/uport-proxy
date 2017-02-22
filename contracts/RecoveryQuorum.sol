@@ -1,6 +1,5 @@
 pragma solidity ^0.4.4;
 import "RecoverableController.sol";
-import "Lib1.sol";
 
 contract RecoveryQuorum {
     RecoverableController public controller;
@@ -87,17 +86,21 @@ contract RecoveryQuorum {
             }
         }
     }
-    function garbageCollect() private{
-        uint i = 0;
-        while(i < delegateAddresses.length){
-            if(delegateIsDeleted(delegates[delegateAddresses[i]])){
-                delegates[delegateAddresses[i]].deletedAfter = 0;
-                delegates[delegateAddresses[i]].pendingUntil = 0;
-                delegates[delegateAddresses[i]].proposedUserKey = 0;
-                Lib1.removeAddress(i, delegateAddresses);
-            }else{i++;}
-        }
-    }
+	function garbageCollect() private {
+		address[] memory notGarbage = new address[](delegateAddresses.length);
+		uint len = 0;
+
+		for (uint i = 0; i < delegateAddresses.length; i++) {
+			if (delegateIsDeleted(delegates[delegateAddresses[i]])) {
+				delegates[delegateAddresses[i]] = Delegate({proposedUserKey: 0, pendingUntil: 0, deletedAfter: 0});
+			} else {
+				notGarbage[len++] = delegateAddresses[i];
+			}
+		}
+
+		delegateAddresses = notGarbage;
+		delegateAddresses.length = len;
+	}
     function delegateRecordExists(Delegate d) private returns (bool){
         return d.deletedAfter != 0;
     }
